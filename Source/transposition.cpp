@@ -6,8 +6,12 @@
 #include "tools.hpp"
 
 namespace{
+    template<class T>
+    struct DeleteAligned{
+        void operator()(T * ptr) const { free(ptr); }
+    };    
     unsigned long long int ttSize = 0;
-    std::unique_ptr<TT::Entry[]> table(nullptr);
+    std::unique_ptr<TT::Entry[],DeleteAligned<TT::Entry>> table(nullptr);
 }
 namespace TT{
 
@@ -20,7 +24,8 @@ GenerationType curGen = 0;
 void initTable(){
     Logging::LogIt(Logging::logInfo) << "Init TT" ;
     Logging::LogIt(Logging::logInfo) << "Entry size " << sizeof(Entry);
-    ttSize = 1024 * powerFloor((DynamicConfig::ttSizeMb * 1024) / (unsigned long long int)sizeof(Entry));
+    ttSize = powerFloor((1024 * 1024 * DynamicConfig::ttSizeMb) / (unsigned long long int)sizeof(Entry));
+    assert(countBit(ttSize) == 1); // a power of 2
 #ifdef __ANDROID__
     Entry * mem = (Entry *)malloc(ttSize * sizeof(Entry));
 #elif __linux__
@@ -70,6 +75,7 @@ void prefetch(Hash h) {
 // e.h is nullHash is the TT entry is not usable
 bool getEntry(Searcher & context, const Position & p, Hash h, DepthType d, Entry & e) {
     assert(h > 0);
+    assert((h&(ttSize-1))==(h%ttSize));
     if ( DynamicConfig::disableTT ) return false;
     e = table[h&(ttSize-1)]; // update entry immediatly to avoid further race condition and invalidate it later if needed
 #ifdef DEBUG_HASH_ENTRY

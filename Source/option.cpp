@@ -95,7 +95,7 @@ namespace Options {
        _keys.push_back(KeyBase(k_bool,  w_check, "UCI_LimitStrength"           , &DynamicConfig::limitStrength                  , false            , true ));
        _keys.push_back(KeyBase(k_int,   w_spin,  "UCI_Elo"                     , &DynamicConfig::strength                       , (int)500         , (int)2800 ));
        _keys.push_back(KeyBase(k_int,   w_spin,  "Hash"                        , &DynamicConfig::ttSizeMb                       , (unsigned int)1  , (unsigned int)256000                , &TT::initTable));
-       _keys.push_back(KeyBase(k_int,   w_spin,  "Threads"                     , &DynamicConfig::threads                        , (unsigned int)1  , (unsigned int)256                   , std::bind(&ThreadPool::setup, &ThreadPool::instance())));
+       _keys.push_back(KeyBase(k_int,   w_spin,  "Threads"                     , &DynamicConfig::threads                        , (unsigned int)1  , (unsigned int)(MAX_THREADS-1)       , std::bind(&ThreadPool::setup, &ThreadPool::instance())));
        _keys.push_back(KeyBase(k_bool,  w_check, "UCI_Chess960"                , &DynamicConfig::FRC                            , false            , true ));
        _keys.push_back(KeyBase(k_bool,  w_check, "Ponder"                      , &DynamicConfig::UCIPonder                      , false            , true ));
        _keys.push_back(KeyBase(k_bool,  w_check, "MateFinder"                  , &DynamicConfig::mateFinder                     , false            , true ));
@@ -110,15 +110,20 @@ namespace Options {
        _keys.push_back(KeyBase(k_string,w_string,"NNUEFile"                    , &DynamicConfig::NNUEFile                                                                                , &nnue::init_NNUE));
        #endif
 
+       #ifdef WITH_GENFILE
        _keys.push_back(KeyBase(k_bool,  w_check, "GenFen"                      , &DynamicConfig::genFen                         , false            , true ));
+       _keys.push_back(KeyBase(k_int,   w_spin,  "GenFenDepth"                 , &DynamicConfig::genFenDepth                    , (unsigned int)2  , (unsigned int)20 ));
+       _keys.push_back(KeyBase(k_int,   w_spin,  "GenFenSkip"                  , &DynamicConfig::genFenSkip                     , (unsigned int)0  , (unsigned int)10000000 ));
+       
+       #endif
 
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleAttack"                   , &DynamicConfig::styleAttack                    , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleComplexity"               , &DynamicConfig::styleComplexity                , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleDevelopment"              , &DynamicConfig::styleDevelopment               , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleMaterial"                 , &DynamicConfig::styleMaterial                  , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleMobility"                 , &DynamicConfig::styleMobility                  , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StylePositional"               , &DynamicConfig::stylePositional                , (int)0   , (int)100));
-       _keys.push_back(KeyBase(k_int, w_spin,  "StyleForwardness"              , &DynamicConfig::styleForwardness               , (int)0   , (int)100));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleAttack"                   , &DynamicConfig::styleAttack                    , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleComplexity"               , &DynamicConfig::styleComplexity                , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleDevelopment"              , &DynamicConfig::styleDevelopment               , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleMaterial"                 , &DynamicConfig::styleMaterial                  , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleMobility"                 , &DynamicConfig::styleMobility                  , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StylePositional"               , &DynamicConfig::stylePositional                , (int)0   , (int)100                                    , &EvalFeatures::callBack));
+       _keys.push_back(KeyBase(k_int, w_spin,  "StyleForwardness"              , &DynamicConfig::styleForwardness               , (int)0   , (int)100                                    , &EvalFeatures::callBack));
 
 #ifdef WITH_SEARCH_TUNING
        _keys.push_back(KeyBase(k_score, w_spin, "qfutilityMargin0"                  , &SearchConfig::qfutilityMargin[0]                  , ScoreType(0)    , ScoreType(1500)     ));
@@ -155,6 +160,7 @@ namespace Options {
 
        _keys.push_back(KeyBase(k_depth, w_spin, "iidMinDepth"                       , &SearchConfig::iidMinDepth                         , DepthType(0)    , DepthType(30)       ));
        _keys.push_back(KeyBase(k_depth, w_spin, "iidMinDepth2"                      , &SearchConfig::iidMinDepth2                        , DepthType(0)    , DepthType(30)       ));
+       _keys.push_back(KeyBase(k_depth, w_spin, "iidMinDepth3"                      , &SearchConfig::iidMinDepth3                        , DepthType(0)    , DepthType(30)       ));
        _keys.push_back(KeyBase(k_depth, w_spin, "probCutMinDepth"                   , &SearchConfig::probCutMinDepth                     , DepthType(0)    , DepthType(30)       ));
        _keys.push_back(KeyBase(k_int  , w_spin, "probCutMaxMoves"                   , &SearchConfig::probCutMaxMoves                     , 0               , 30                  ));
        _keys.push_back(KeyBase(k_score, w_spin, "probCutMargin"                     , &SearchConfig::probCutMargin                       , ScoreType(0)    , ScoreType(1500)     ));
@@ -220,6 +226,9 @@ namespace Options {
        //GETOPT(useNNUE,          bool)         
        GETOPT(NNUEFile,         std::string)
 #endif
+#ifdef WITH_GENFILE
        GETOPT(genFen,            bool)
+       GETOPT(genFenDepth,       unsigned int)
+#endif
    }
 } // Options

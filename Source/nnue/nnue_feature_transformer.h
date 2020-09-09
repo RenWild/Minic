@@ -58,20 +58,19 @@ namespace Eval::NNUE {
 
     // Read network parameters
     bool ReadParameters(std::istream& stream) {
-      stream.read(reinterpret_cast<char*>(biases_),
-                  kHalfDimensions * sizeof(BiasType));
-      stream.read(reinterpret_cast<char*>(weights_),
-                  kHalfDimensions * kInputDimensions * sizeof(WeightType));
+      for (std::size_t i = 0; i < kHalfDimensions; ++i)
+        biases_[i] = read_little_endian<BiasType>(stream);
+      for (std::size_t i = 0; i < kHalfDimensions * kInputDimensions; ++i)
+        weights_[i] = read_little_endian<WeightType>(stream);
       return !stream.fail();
     }
 
     // Proceed with the difference calculation if possible
     bool UpdateAccumulatorIfPossible(const Position& pos) const {
-      assert(pos.accumulator);
-      if (pos.accumulator->computed_accumulation) {
+      if (pos.accumulator().computed_accumulation) {
         return true;
       }
-      const auto prev = pos.previousAccumulator;
+      const auto prev = pos.previousAccumulatorPtr();
       if (prev && prev->computed_accumulation) {
         UpdateAccumulator(pos);
         return true;
@@ -84,7 +83,7 @@ namespace Eval::NNUE {
       if (refresh || !UpdateAccumulatorIfPossible(pos)) {
         RefreshAccumulator(pos);
       }
-      const auto& accumulation = pos.accumulator->accumulation;
+      const auto& accumulation = pos.accumulator().accumulation;
 
   #if defined(USE_AVX2)
       constexpr IndexType kNumChunks = kHalfDimensions / kSimdWidth;
@@ -109,7 +108,7 @@ namespace Eval::NNUE {
       const int8x8_t kZero = {0};
   #endif
 
-      const Color perspectives[2] = {pos.c, ~pos.c};
+      const Color perspectives[2] = {pos.side_to_move(), ~pos.side_to_move()};
       for (IndexType p = 0; p < 2; ++p) {
         const IndexType offset = kHalfDimensions * p;
 
@@ -180,8 +179,7 @@ namespace Eval::NNUE {
    private:
     // Calculate cumulative value without using difference calculation
     void RefreshAccumulator(const Position& pos) const {
-      assert(pos.accumulator);
-      auto& accumulator = *pos.accumulator;
+      auto& accumulator = pos.accumulator();
       IndexType i = 0;
       Features::IndexList active_indices[2];
       RawFeatures::AppendActiveIndices(pos, kRefreshTriggers[i],
@@ -249,10 +247,9 @@ namespace Eval::NNUE {
 
     // Calculate cumulative value using difference calculation
     void UpdateAccumulator(const Position& pos) const {
-      assert(pos.accumulator);
-      assert(pos.previousAccumulator);
-      const auto prev_accumulator = *pos.previousAccumulator;
-      auto& accumulator = *pos.accumulator;
+      assert(pos.previousAccumulatorPtr());
+      const auto prev_accumulator = *pos.previousAccumulatorPtr();
+      auto& accumulator = pos.accumulator();
       IndexType i = 0;
       Features::IndexList removed_indices[2], added_indices[2];
       bool reset[2];

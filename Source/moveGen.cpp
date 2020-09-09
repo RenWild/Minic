@@ -4,6 +4,7 @@
 #include "logging.hpp"
 #include "material.hpp"
 #include "positionTools.hpp"
+#include "searcher.hpp"
 #include "tools.hpp"
 
 #ifdef WITH_NNUE
@@ -107,7 +108,7 @@ void applyNull(Searcher & , Position & pN) {
 ///@todo NNUE is that correct ???
 #ifdef WITH_NNUE
     if (DynamicConfig::useNNUE){
-      pN.accumulator->computed_score = false;
+      pN._accumulator->computed_score = false;
     }
 #endif
 
@@ -138,12 +139,12 @@ bool apply(Position & p, const Move & m, bool noValidation){
 
 #ifdef WITH_NNUE
     if (DynamicConfig::useNNUE){
-       p.accumulator->computed_accumulation = false;
-       p.accumulator->computed_score = false;
+       p._accumulator->computed_accumulation = false;
+       p._accumulator->computed_score = false;
     }
     PieceId dp0 = PIECE_ID_NONE;
     PieceId dp1 = PIECE_ID_NONE;
-    auto & dp = p.dirtyPiece;
+    auto & dp = p._dirtyPiece;
     dp.dirty_num = 1; // at least one piece is changing ...
     Square rfrom = INVALIDSQUARE; // for castling
     Square rto   = INVALIDSQUARE; // for castling
@@ -256,23 +257,23 @@ bool apply(Position & p, const Move & m, bool noValidation){
             dp.dirty_num = 2; // 2 pieces changed
             dp1 = p.piece_id_on(capSq);
             dp.pieceId[1] = dp1;
-            dp.old_piece[1] = p.evalList.piece_with_id(dp1);
-            p.evalList.put_piece(dp1, capSq, PieceIdx(P_none));
-            dp.new_piece[1] = p.evalList.piece_with_id(dp1);
+            dp.old_piece[1] = p._evalList.piece_with_id(dp1);
+            p._evalList.put_piece(dp1, capSq, PieceIdx(P_none));
+            dp.new_piece[1] = p._evalList.piece_with_id(dp1);
         }
 
         if ( !isCastling(type)){ // move from piece
             dp0 = p.piece_id_on(from);
             dp.pieceId[0] = dp0;
-            dp.old_piece[0] = p.evalList.piece_with_id(dp0);
-            p.evalList.put_piece(dp0, to, PieceIdx(fromP));
-            dp.new_piece[0] = p.evalList.piece_with_id(dp0);
+            dp.old_piece[0] = p._evalList.piece_with_id(dp0);
+            p._evalList.put_piece(dp0, to, PieceIdx(fromP));
+            dp.new_piece[0] = p._evalList.piece_with_id(dp0);
         }
 
         if ( isPromotion(type)){ // change to piece type
             dp0 = p.piece_id_on(to);
-            p.evalList.put_piece(dp0, to, PieceIdx(promPiece));
-            dp.new_piece[0] = p.evalList.piece_with_id(dp0);
+            p._evalList.put_piece(dp0, to, PieceIdx(promPiece));
+            dp.new_piece[0] = p._evalList.piece_with_id(dp0);
         }      
 
         if ( isCastling(type)){ 
@@ -280,13 +281,13 @@ bool apply(Position & p, const Move & m, bool noValidation){
             dp0 = p.piece_id_on(from);
             dp1 = p.piece_id_on(rfrom);
             dp.pieceId[0] = dp0;
-            dp.old_piece[0] = p.evalList.piece_with_id(dp0);
-            p.evalList.put_piece(dp0, to, PieceIdx(p.c==Co_White?P_wk:P_bk));
-            dp.new_piece[0] = p.evalList.piece_with_id(dp0);
+            dp.old_piece[0] = p._evalList.piece_with_id(dp0);
+            p._evalList.put_piece(dp0, to, PieceIdx(p.c==Co_White?P_wk:P_bk));
+            dp.new_piece[0] = p._evalList.piece_with_id(dp0);
             dp.pieceId[1] = dp1;
-            dp.old_piece[1] = p.evalList.piece_with_id(dp1);
-            p.evalList.put_piece(dp1, rto, PieceIdx(p.c==Co_White?P_wr:P_br));
-            dp.new_piece[1] = p.evalList.piece_with_id(dp1);
+            dp.old_piece[1] = p._evalList.piece_with_id(dp1);
+            p._evalList.put_piece(dp1, rto, PieceIdx(p.c==Co_White?P_wr:P_br));
+            dp.new_piece[1] = p._evalList.piece_with_id(dp1);
         }
       }
 #endif
@@ -370,7 +371,7 @@ bool apply(Position & p, const Move & m, bool noValidation){
     return true;
 }
 
-ScoreType randomMover(const Position & p, PVList & pv, bool isInCheck) {
+ScoreType randomMover(const Position & p, PVList & pv, bool isInCheck, Searcher & context) {
     MoveList moves;
     MoveGen::generate<MoveGen::GP_all>(p, moves, false);
     if (moves.empty()) return isInCheck ? -MATE : 0;
@@ -381,6 +382,9 @@ ScoreType randomMover(const Position & p, PVList & pv, bool isInCheck) {
         Position p2 = p;
         if (!apply(p2, *it)) continue;
         PVList childPV;
+#ifdef WITH_GENFILE
+        if ( DynamicConfig::genFen ) context.writeToGenFile(p2);
+#endif        
         updatePV(pv, *it, childPV);
         const Square to = Move2To(*it);
         if (p.c == Co_White && to == p.king[Co_Black]) return MATE + 1;

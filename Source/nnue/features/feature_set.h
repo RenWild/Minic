@@ -22,10 +22,7 @@
 #define NNUE_FEATURE_SET_H_INCLUDED
 
 #include "features_common.h"
-#include "../../definition.hpp"
-#include "../../position.hpp"
 #include <array>
-#include <cstdint>
 
 namespace Eval::NNUE::Features {
 
@@ -64,7 +61,7 @@ namespace Eval::NNUE::Features {
         const PositionType& pos, TriggerEvent trigger,
         IndexListType removed[2], IndexListType added[2], bool reset[2]) {
 
-      const auto& dp = pos.dirtyPiece;
+      const auto& dp = pos.dirtyPiece();
       if (dp.dirty_num == 0) return;
 
       for (Color perspective : { WHITE, BLACK }) {
